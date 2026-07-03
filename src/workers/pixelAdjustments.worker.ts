@@ -1,0 +1,57 @@
+import type { Adjustments } from '../types/editor'
+
+export interface AdjustmentsWorkerRequest {
+  data: Uint8ClampedArray<ArrayBuffer>
+  adjustments: Adjustments
+}
+
+export interface AdjustmentsWorkerResponse {
+  data: Uint8ClampedArray<ArrayBuffer>
+}
+
+function clamp(value: number): number {
+  return Math.min(255, Math.max(0, value))
+}
+
+function applyBrightness(value: number, factor: number): number {
+  return value * factor
+}
+
+function applyContrast(value: number, factor: number): number {
+  return (value - 127.5) * factor + 127.5
+}
+
+/** Mirrors the CSS saturate() matrix so exported pixels match the live preview. */
+function applySaturation(r: number, g: number, b: number, factor: number): [number, number, number] {
+  return [
+    (0.213 + 0.787 * factor) * r + (0.715 - 0.715 * factor) * g + (0.072 - 0.072 * factor) * b,
+    (0.213 - 0.213 * factor) * r + (0.715 + 0.285 * factor) * g + (0.072 - 0.072 * factor) * b,
+    (0.213 - 0.213 * factor) * r + (0.715 - 0.715 * factor) * g + (0.072 + 0.928 * factor) * b,
+  ]
+}
+
+// `self` here is the worker's own global scope. Typed as `Worker` (rather than pulling in
+// the "webworker" lib, which conflicts with the "DOM" lib already used by the rest of the
+// app) since DedicatedWorkerGlobalScope's postMessage/onmessage shape matches Worker's.
+const ctx = self as unknown as Worker
+
+ctx.onmessage = (event: MessageEvent<AdjustmentsWorkerRequest>) => {
+  const { data, adjustments } = event.data
+  const brightnessFactor = 1 + adjustments.brightness / 100
+  const contrastFactor = 1 + adjustments.contrast / 100
+  const saturationFactor = 1 + adjustments.saturation / 100
+
+  for (let i = 0; i < data.length; i += 4) {
+    let r = applyContrast(applyBrightness(data[i], brightnessFactor), contrastFactor)
+    let g = applyContrast(applyBrightness(data[i + 1], brightnessFactor), contrastFactor)
+    let b = applyContrast(applyBrightness(data[i + 2], brightnessFactor), contrastFactor)
+    ;[r, g, b] = applySaturation(r, g, b, saturationFactor)
+
+    data[i] = clamp(r)
+    data[i + 1] = clamp(g)
+    data[i + 2] = clamp(b)
+  }
+
+  const response: AdjustmentsWorkerResponse = { data }
+  ctx.postMessage(response, [data.buffer])
+}
