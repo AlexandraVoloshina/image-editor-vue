@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Adjustments } from '../types/editor'
 
-const props = defineProps<{
+defineProps<{
   label: string
   icon: string
   adjustmentKey: keyof Adjustments

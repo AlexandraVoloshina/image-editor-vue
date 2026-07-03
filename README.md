@@ -4,9 +4,16 @@ A single-page image editor built with **Vue 3 · Vuetify 3 · Pinia · TypeScrip
 
 ## Quick start
 
+Requires **Node 18+** (Vite 5 needs the global Web Crypto API, which Node 16 doesn't expose).
+The project pins `20.19.5` in `.nvmrc`:
+
 ```bash
+nvm use          # switches to the version in .nvmrc
 npm i && npm run dev
 ```
+
+If `npm run build` fails with `crypto$2.getRandomValues is not a function`, your active Node
+is too old — run `nvm use` (or upgrade Node to 18+) and retry.
 
 ## Features
 
