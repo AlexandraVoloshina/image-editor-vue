@@ -1,4 +1,4 @@
-import type { Adjustments } from '../types/editor'
+import type { Adjustments, FilterName } from '../types/editor'
 
 export interface AdjustmentsWorkerRequest {
   data: Uint8ClampedArray<ArrayBuffer>
@@ -30,6 +30,24 @@ function applySaturation(r: number, g: number, b: number, factor: number): [numb
   ]
 }
 
+function applyFilter(r: number, g: number, b: number, filterName: FilterName): [number, number, number] {
+  switch (filterName) {
+    case 'grayscale': {
+      const average = (r + g + b) / 3
+      return [average, average, average]
+    }
+    case 'sepia': {
+      return [
+        clamp(r * 0.393 + g * 0.769 + b * 0.189),
+        clamp(r * 0.349 + g * 0.686 + b * 0.168),
+        clamp(r * 0.272 + g * 0.534 + b * 0.131),
+      ]
+    }
+    default:
+      return [r, g, b]
+  }
+}
+
 // `self` here is the worker's own global scope. Typed as `Worker` (rather than pulling in
 // the "webworker" lib, which conflicts with the "DOM" lib already used by the rest of the
 // app) since DedicatedWorkerGlobalScope's postMessage/onmessage shape matches Worker's.
@@ -46,6 +64,7 @@ ctx.onmessage = (event: MessageEvent<AdjustmentsWorkerRequest>) => {
     let g = applyContrast(applyBrightness(data[i + 1], brightnessFactor), contrastFactor)
     let b = applyContrast(applyBrightness(data[i + 2], brightnessFactor), contrastFactor)
     ;[r, g, b] = applySaturation(r, g, b, saturationFactor)
+    ;[r, g, b] = applyFilter(r, g, b, adjustments.filter)
 
     data[i] = clamp(r)
     data[i + 1] = clamp(g)

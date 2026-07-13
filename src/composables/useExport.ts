@@ -1,7 +1,7 @@
 import { useImageStore } from '../stores/imageStore'
 import { useCropStore } from '../stores/cropStore'
 import { useAdjustmentsStore } from '../stores/adjustmentsStore'
-import type { Adjustments } from '../types/editor'
+import type { Adjustments, ExportManifest, ExportOperationManifest } from '../types/editor'
 import AdjustmentsWorker from '../workers/pixelAdjustments.worker?worker'
 import type { AdjustmentsWorkerRequest, AdjustmentsWorkerResponse } from '../workers/pixelAdjustments.worker'
 
@@ -29,6 +29,37 @@ function processInWorker(imageData: ImageData, adjustments: Adjustments): Promis
     const request: AdjustmentsWorkerRequest = { data: imageData.data, adjustments: { ...adjustments } }
     worker.postMessage(request, [imageData.data.buffer])
   })
+}
+
+function buildManifest(imageName: string | null | undefined, adjustments: Adjustments, cropRect: { x: number; y: number; width: number; height: number } | null): ExportManifest {
+  const operations: ExportOperationManifest[] = []
+
+  if (cropRect) {
+    operations.push({ type: 'crop', rectangle: cropRect })
+  }
+
+  operations.push({
+    type: 'adjustments',
+    brightness: adjustments.brightness,
+    contrast: adjustments.contrast,
+    saturation: adjustments.saturation,
+    filter: adjustments.filter,
+  })
+
+  return {
+    version: 1,
+    sourceImage: imageName ?? null,
+    operations,
+  }
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export function useExport() {
@@ -67,18 +98,21 @@ export function useExport() {
       )
     })
 
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = buildFilename(imageStore.originalFile?.name ?? 'image.png')
-    a.click()
-    URL.revokeObjectURL(url)
+    const manifest = buildManifest(
+      imageStore.originalFile?.name,
+      adjustmentsStore.adjustments,
+      cropStore.cropData,
+    )
+    const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' })
+
+    triggerDownload(blob, buildFilename(imageStore.originalFile?.name ?? 'image.png', 'png'))
+    triggerDownload(manifestBlob, buildFilename(imageStore.originalFile?.name ?? 'image.png', 'json'))
   }
 
-  function buildFilename(original: string): string {
+  function buildFilename(original: string, extension: 'png' | 'json'): string {
     const dot = original.lastIndexOf('.')
     const base = dot > -1 ? original.slice(0, dot) : original
-    return `${base}-edited.png`
+    return `${base}-edited.${extension}`
   }
 
   return { exportImage }

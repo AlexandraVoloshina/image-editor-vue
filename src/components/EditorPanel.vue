@@ -6,7 +6,8 @@ import { useAdjustmentsStore } from '../stores/adjustmentsStore'
 import { useHistoryStore } from '../stores/historyStore'
 import { useExport } from '../composables/useExport'
 import AdjustmentSlider from './AdjustmentSlider.vue'
-import type { Adjustments } from '../types/editor'
+
+type NumericAdjustmentKey = 'brightness' | 'contrast' | 'saturation'
 
 // vue-advanced-cropper is a heavy dependency — only fetch it once the user opens the crop dialog.
 const CropModal = defineAsyncComponent(() => import('./CropModal.vue'))
@@ -25,10 +26,16 @@ const errorMessage = ref('')
 
 const isDirty = computed(() => adjustmentsStore.isDirty || cropStore.cropData !== null)
 
-const sliders: { label: string; icon: string; key: keyof Adjustments }[] = [
+const sliders: { label: string; icon: string; key: NumericAdjustmentKey }[] = [
   { label: 'Brightness', icon: 'mdi-brightness-6', key: 'brightness' },
   { label: 'Contrast',   icon: 'mdi-contrast-circle', key: 'contrast' },
   { label: 'Saturation', icon: 'mdi-palette-outline', key: 'saturation' },
+]
+
+const filterOptions = [
+  { title: 'None', value: 'none' },
+  { title: 'Grayscale', value: 'grayscale' },
+  { title: 'Sepia', value: 'sepia' },
 ]
 
 function unloadImage() {
@@ -127,6 +134,19 @@ async function handleExport() {
         :model-value="adjustmentsStore.adjustments[s.key]"
         @update:model-value="adjustmentsStore.setAdjustment(s.key, $event)"
         @start="historyStore.commit()"
+      />
+
+      <v-select
+        class="mt-3"
+        label="Filter"
+        :model-value="adjustmentsStore.adjustments.filter"
+        :items="filterOptions"
+        item-title="title"
+        item-value="value"
+        variant="outlined"
+        density="comfortable"
+        hide-details
+        @update:model-value="historyStore.commit(); adjustmentsStore.setFilter($event)"
       />
     </div>
 

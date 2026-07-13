@@ -25,7 +25,8 @@ is too old — run `nvm use` (or upgrade Node to 18+) and retry.
 | Non-destructive | `originalUrl` is an Object URL of the untouched `File`. All derived state lives separately. "Hold to compare" button shows the original. |
 | Undo / Redo | Crop and adjustment changes are undoable (buttons + Ctrl/Cmd+Z, Ctrl+Y). History resets on load/unload. |
 | Reset | Single button restores all sliders to 0 and removes the crop. |
-| Export | Runs brightness/contrast/saturation on the pixel data in a Web Worker (off the main thread), draws onto an offscreen `<canvas>`, downloads as PNG. Failures surface via a snackbar. |
+| Filter | Adds a simple style filter (`None`, `Grayscale`, `Sepia`) that is applied in the preview and exported result. |
+| Export | Runs brightness/contrast/saturation and the selected filter on the pixel data in a Web Worker (off the main thread), draws onto an offscreen `<canvas>`, downloads as PNG, and saves a JSON manifest describing the replayable operations. Failures surface via a snackbar. |
 | Loading state | Preview shows a skeleton placeholder until the image finishes loading. |
 | Responsive | Sidebar collapses into a stacked panel below the preview on small screens. |
 
